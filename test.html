@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja" lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <title>StackMachine テストページ</title>
+  <link rel="stylesheet" type="text/css" href="./terminalize.css"/>
+  <link rel="stylesheet" type="text/css" href="./test.css"/>
+  <script src="terminalize.js"></script>
+  <script src="StackMachine.js"></script>
+  <script>
+  var sm;// Stack Machine
+  var term;//標準入出力のためのtextarea
+  var uiInfo;//ステップ実行時のUI変更のための情報を表示
+
+  //StackMachineが標準出力への出力のために使用する関数
+  function printLine(str) {
+    term.write(str);
+  }
+
+  //ステップ実行時のUI変更のための情報を表示する関数
+  function printUIInfo(uiData) {
+    var s = "";
+    s = s + "行番号=" + uiData.lineNumber + "\n";
+    s = s + "プログラムポインタ="+uiData.programPointer+"\n";
+    s = s + "スタック[";
+    for (var i=0;i<uiData.stack.length;i++) {
+      s = s + uiData.stack[i]+", ";
+    }
+    s = s + "]\n";
+    s = s + makeActRecInfo(uiData.actRec);
+    s = s + "次に実行される命令: " + uiData.instruction + "\n";
+    //uiInfo.value = uiInfo.value + s;
+    uiInfo.value = s;
+    uiInfo.scrollTop = uiInfo.scrollHeight;
+  }
+
+  function makeActRecInfo(actRec) {
+    var vars = {};
+    var s = "";
+    s = s + "駆動レコード[\n";
+    var nowActRec = actRec;
+    while (nowActRec != null) {
+      for (var i=0;i<nowActRec.vars.length;i++) {
+        s = s + nowActRec.vars[i][0]+"="+nowActRec.vars[i][1]+", ";
+      }
+      s = s + "\n";
+      nowActRec = nowActRec.parent;
+    }
+    s = s + "]\n";
+    return s;
+  }
+
+  function init() {
+    term = terminalize("stdio");
+    term.setPrompt("");
+    uiInfo = document.getElementById("uiInfo");
+    var setBPButton = document.getElementById("setBP");
+    setBPButton.checked = false;
+    setBPButton.onclick = setBPButtonClicked;
+    var initButton = document.getElementById("init");
+    initButton.onclick = initClicked;
+    var execButton = document.getElementById("exec");
+    execButton.onclick = execClicked;
+
+    sm = new StackMachine(printLine,printUIInfo);
+    sm.init(document.getElementById("prog").value);
+    term.addInputListener(function(str){sm.input(str);});
+  }
+
+  function setBPButtonClicked() {
+    var setBP = document.getElementById("setBP");
+    if (setBP.checked) {
+      //var a = sm.setBreakPoint(5);
+      //alert("設定されたBP数："+a);
+      var a = sm.setAllBreakPoints();
+      alert("設定されたBP数："+a.length);
+    } else {
+      //var a = sm.clearBreakPoint(5);
+      //alert("解除されたBP数："+a);
+      var a = sm.clearAllBreakPoints();
+      alert("解除されたBP数："+a.length);
+    }
+  }
+
+  function initClicked() {
+    term.clear();
+    uiInfo.value = "";
+    var stepMode = document.getElementById("setBP");
+    stepMode.checked = false;
+    sm.init(document.getElementById("prog").value);
+  }
+
+  function execClicked() {
+    sm.exec();
+  }
+  </script>
+<body onload="init();">
+
+  <h1>StackMachine テストページ</h1>
+  <p><a href="./memo.mm">メモ</a></p>
+
+  <textarea id="source" cols="40" rows="10">
+01: /* 想定されるC言語のソース */
+02: int i,n;
+03: printf("繰り返し回数を入力:");
+04: scanf("%d",&n);
+05: for (i=0;i<n;i++) {
+06:   printf("Hello World!\n",i);
+07: }
+08:
+  </textarea>
+
+  <textarea id="uiInfo" cols="40" rows="10">
+  </textarea>
+
+<br/>
+
+<input id="setBP" type="checkbox" value="false">set BP</input>
+<input id="init" type="button" value="init"/>
+<input id="exec" type="button" value="exec"/>
+
+<br/>
+
+  <textarea id="prog" cols="40" rows="10">//スラッシュ二つで1行コメント
+VAR i #@LABEL 2
+VAR n
+PUSH "繰り返し回数を入力:" #@LABEL 3
+PRINT
+INPUT_WAIT #@LABEL 4
+SCANI
+SET n
+PUSH 0 #@LABEL 5
+SET i
+GET i #@LABEL L1 5
+GET n
+GE
+IFJUMP L2
+PUSH "Hello World!\n" #@LABEL 6
+PRINT
+GET i
+INC
+SET i
+JUMP L1
+FREE i #@LABEL L2 8
+FREE n
+  </textarea>
+
+  <div id="stdio">
+  </div><br />
+
+</body>
+</html>
